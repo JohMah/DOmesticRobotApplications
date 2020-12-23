@@ -4,7 +4,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
-    <title>ESP8266 OmaRemote</title>
+    <title>ESP8266 Robot_1</title>
   
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -64,8 +64,6 @@ arrow {
   color: #17242D;
 }
 
-
-
 .grid {
   display: grid;
   grid-template-columns: 50px 50px 50px 50px;
@@ -113,6 +111,25 @@ dt {
   font-weight: bold;
   margin-bottom: 0.5rem;
 }
+
+.label1, .label2, .label {
+    display: inline-block;
+    width: 80px;
+}
+
+.label {
+    width: 50px;
+
+}
+
+.label1 {
+  background-color: #ffb0a0; /* Red */
+}
+.label2 {
+    background-color: #A0ffA0; /* Green */
+}
+
+
 </style>
 
 
@@ -166,6 +183,21 @@ dt {
     <arrow> &#8627 </arrow>
   </article>
 </div>
+<div>
+   <label>P</label>
+   <label class="label" id="P"> &nbsp </label>
+   <label>I</label>
+   <label class="label" id="I"  value=""> &nbsp </label>
+   <label>D</label>
+   <label class="label" id="D"  value=""> &nbsp </label>
+</div> <br>
+<div>
+   <label>Left</label>
+   <label class="label1" id="PosL"> &nbsp </label>
+   <label>Right</label>
+   <label class="label2" id="PosR"> &nbsp </label><br>
+</div><br>
+
 
 <script>
 var connection = new WebSocket('ws://192.168.2.60/ws');
@@ -193,7 +225,41 @@ document.querySelector('.js-button').addEventListener('click', function() {
 })
 
 </script>
+<script>
+setInterval(function() {
+  // Call a function repetatively with 2 Second interval
+  getLoadData();
+}, 2000); //2000mSeconds update rate
 
+function getData() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("ADCValue").innerHTML = this.responseText;
+      
+    }
+  };
+  xhttp.open("GET", "getB", true);
+  xhttp.send();
+}
+
+function getLoadData() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      var obj = JSON.parse(this.responseText);
+      document.getElementById("P").innerHTML = obj.P;
+      document.getElementById("I").innerHTML = obj.I;
+      document.getElementById("D").innerHTML = obj.D;
+      document.getElementById("PosL").innerHTML = obj.PosL;      
+      document.getElementById("PosR").innerHTML = obj.PosR;
+    }
+  };
+  
+  xhttp.open("GET", "getLoad", true);
+  xhttp.send();
+}
+</script>
 </body>
 </html>
 

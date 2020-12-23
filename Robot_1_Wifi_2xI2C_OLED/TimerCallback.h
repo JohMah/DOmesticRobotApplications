@@ -5,9 +5,9 @@ void timerCallback(void *pArg) {
   ReductionCounter++;
   if (ReductionCounter >= Reduction){
     ReductionCounter = 0;
-    Setpoint_left+= Increment;
-    if (Setpoint_left >=  2000) Increment = -1* abs(Increment); //if (Setpoint > 4096 * 58 / 12) Increment = -1* abs(Increment);
-    if (Setpoint_left <=     0) Increment = abs(Increment);     //if (Setpoint < -4096 * 58 / 12) Increment = abs(Increment);
+    //Setpoint_left+= Increment;
+    //if (Setpoint_left >=  2000) Increment = -1* abs(Increment); //if (Setpoint > 4096 * 58 / 12) Increment = -1* abs(Increment);
+    //if (Setpoint_left <=     0) Increment = abs(Increment);     //if (Setpoint < -4096 * 58 / 12) Increment = abs(Increment);
   }
   Wire.getpins(&wasSDA,&wasSCL); //Remember the I2C Pins in use before interrupt
   Wire.begin(SDA1_PN, SCL1_PN); //First I2C bus
@@ -33,31 +33,14 @@ void timerCallback(void *pArg) {
   Positions_left[TimerCallbackCounter] = Position_left;
   //Calculate PID for the left wheel
   myPID_left.Compute();
-/*
-  if (Output >= 0) {
-    analogWrite(ENA, (int)abs(Output));  // Turn the LED on by making the voltage HIGH
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-  }
-  else {
-    analogWrite(ENA, (int)abs(Output));  // Turn the LED on by making the voltage HIGH
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-  }
-*/
-  pwm+= IncPwm;
-  if (pwm >= PWM_RANGE) IncPwm = -1* abs(IncPwm);
-  if (pwm <= -PWM_RANGE) IncPwm = abs(IncPwm);
 
-  if (pwm_left >= 0) {
-    analogWrite(IN1, (int)(abs(pwm_left)));
-    //digitalWrite(IN1, HIGH);
+  if (Output_left >= 0) {
+    analogWrite(IN1, (int)(abs(Output_left)));
     digitalWrite(IN2, LOW);
   }
   else {
-    analogWrite(IN2, (int)(abs(pwm_left)));
+    analogWrite(IN2, (int)(abs(Output_left)));
     digitalWrite(IN1, LOW);
-    //digitalWrite(IN2, HIGH);
   }
 
   //Calculate position Right Wheel

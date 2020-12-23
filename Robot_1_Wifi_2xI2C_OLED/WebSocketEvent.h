@@ -21,41 +21,93 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   } else if (type == WS_EVT_DATA) {
     char input;
     input = data[0];
-    if (input == '0') {
-      Serial.println("UP0");//jma test
+    switch (input) {
+      
+    case '0': 
+      Serial.println("UP0");
       pwm_left = 0;
       pwm_right = 0;
-    }
-    if (input == '1') {
+      break;
+    case  '1':
       Serial.println("UP1");//jma test
       pwm_left = PWM_RANGE;
-    }
-    if (input == '2') {
+      break;
+    case  '2':
       Serial.println("UP2");//jma test
       pwm_right = PWM_RANGE;
-    }
-    if (input == '3') {
+      break;
+    case  '3':
       Serial.println("UP3");//jma test
       pwm_left = 0;
       pwm_right = 0;
-    }
-    if (input == '4') {
+      break;
+    case  '4':
       Serial.println("UP4");//jma test
-      pwm_left = 0;
-      pwm_right = 0;
-    }
-    if (input == '5') {
+      Setpoint_left += 1024;
+      break;
+    case  '5':
       Serial.println("UP5");//jma test
       pwm_left = PWM_RANGE*3/4;
-    }
-    if (input == '6') {
+      break;
+    case  '6':
       Serial.println("UP6");//jma test
       pwm_right = PWM_RANGE*3/4;
-    }
-    if (input == '7') {
+      break;
+    case  '7':
       Serial.println("UP7");//jma test
       pwm_left = 0;
       pwm_right = 0;
+      break;
+    case  '8':
+      Serial.println("UP8");//jma test
+      Setpoint_left -= 1024;
+      break;
+    case  '9':
+      Kp *= 1.1;
+      myPID_left.SetTunings(Kp,Ki,Kd);
+      myPID_right.SetTunings(Kp,Ki,Kd);
+      Serial.print("Kp: ");
+      Serial.println(Kp);
+      break;
+    case  'D':
+      Kp *= 0.9;
+      myPID_left.SetTunings(Kp,Ki,Kd);
+      myPID_right.SetTunings(Kp,Ki,Kd);
+      Serial.print("Kp: ");
+      Serial.println(Kp);
+      break;
+    case  'A':
+      Ki *= 1.1;
+      myPID_left.SetTunings(Kp,Ki,Kd);
+      myPID_right.SetTunings(Kp,Ki,Kd);
+      Serial.print("Ki: ");
+      Serial.println(Ki);
+      break;
+    case  'E':
+      Ki *= 0.9;
+      myPID_left.SetTunings(Kp,Ki,Kd);
+      myPID_right.SetTunings(Kp,Ki,Kd);
+      Serial.print("Ki: ");
+      Serial.println(Ki);
+      break;
+    case  'B':
+      Kd *= 1.1;
+      myPID_left.SetTunings(Kp,Ki,Kd);
+      myPID_right.SetTunings(Kp,Ki,Kd);
+      Serial.print("Kd: ");
+      Serial.println(Kd);
+      break;
+    case  'F':
+      Kd *= 0.9;
+      myPID_left.SetTunings(Kp,Ki,Kd);
+      myPID_right.SetTunings(Kp,Ki,Kd);
+      Serial.print("Kd: ");
+      Serial.println(Kd);
+      break;
+    default:
+      Serial.print("Unknown Character: ");
+      Serial.println(input);
+      break;
     }
   }
 }

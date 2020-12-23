@@ -56,55 +56,11 @@ AsyncWebServer server(80); //Server on port 80
 AsyncWebSocket ws("/ws");
 const char* PARAM_INPUT_1 = "state"; 
 
-
-
-
 volatile bool OTAstate = false;
 volatile bool remote = false;
-volatile bool distanceDataReady = false;
-bool robotDirection = false;
-bool servoDirection = false;
-bool started = false;
-bool turnStarted = false;
-bool stopRobot = false;
-volatile bool startEndReading = false;
-double readingPos = 0.00;
-double value = 0.00;
-double output = 0.00;
-double speedRobot = 0.00;
+
 int i = 0;
-int servoTrigger = 0;
-int positionR = 0;
-int wheelDir, servoPos = 0;
-int kpAddr = 0, kiAddr = 1, kdAddr = 2, kpAddrDec = 3, kiAddrDec = 4, kdAddrDec = 5, ad = 6, add = 7, ads = 8, za = 9, zadec = 10, mml = 11, mmh = 12, mMl = 13, mMh = 14, mao = 15, mbo = 16, tsh = 17, tsl = 18;
-int val, val2;
-int m1 = D1, m2 = D5, m3 = D7, m4 = D6;
-int offset = 0;
-//double Setpoint = 0.00, Input = 0.00, Output = 0.00;
-//double Kp = 0.00, Ki = 0.00, Kd = 0.00;
-//double pTemp = Kp, iTemp = Ki, dTemp = Kd;
-double minimum, maximum;
-double k = 0.00;
-double desiredAngle = 0.00;
-int turnSpeed = 0;
-int speedTime = 0;
-//PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT, P_ON_M);
-//Servo myservo;
-int trigPin = D0;
-int echoPin = D8;
-int OTAbutton = D2;
-int servo = RX; // or D9 for node mcu
-int led = TX;
-int turnTime = 0;
-int sampleTime = 15;
-double distance = 20.00;
-volatile unsigned long start;
-volatile unsigned long finish;
-unsigned long speedTimer;
-unsigned long turnTimer;
-unsigned long sr04Timer;
-double adjustAngle = 0.00;
-double zeroAngle = 0.00;
+
 double motorMinVoltage = 0.00;
 double motorMaxVoltage = 0.00;
 double pitch = 0.00;
@@ -116,14 +72,21 @@ uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 uint8_t mpuIntStatus;
-// orientation/motion vars
-//Quaternion q;           // [w, x, y, z]         quaternion container
-//VectorFloat gravity;    // [x, y, z]            gravity vector
+
 
 long Position_left, Position_right, pwm_left, pwm_right, pwm;
+int mode;  //modes: 0 = pwm; 1 = speed; 2 = position
+//Define Variables we'll be connecting to
+double Setpoint_left = 0.0, Input_left = 0.0, Output_left = 0.0;
+double Setpoint_right = 0.0, Input_right = 0.0, Output_right = 0.0;
+double Speed_left = 0.0, Speed_right = 0.0;
+//Specify the links and initial tuning parameters
+#include <PID_v1.h>
+double Kp=1.7, Ki=6.0, Kd=0.18;
+PID myPID_left(&Input_left, &Output_left, &Setpoint_left, Kp, Ki, Kd, P_ON_E, DIRECT);  //P_ON_E = proportional on Error P_ON_M = on Measurement
+PID myPID_right(&Input_right, &Output_right, &Setpoint_right, Kp, Ki, Kd, P_ON_E, DIRECT);  //P_ON_E = proportional on Error P_ON_M = on Measurement
 
 #include "WebSocketEvent.h"
-
 
 /* For I2C */
 #include "I2Cdev.h"
@@ -146,19 +109,10 @@ Adafruit_SSD1306 display(OLED_RESET);
 #include <AS5600.h>
 AMS_5600 ams5600;
 
-#include <PID_v1.h>
-//Define Variables we'll be connecting to
-double Setpoint_left = 0.0, Input_left = 0.0, Output_left = 0.0;
-double Setpoint_right = 0.0, Input_right = 0.0, Output_right = 0.0;
-double Speed_left = 0.0, Speed_right = 0.0;
 //variable to increment setpoint every xx cycles to test the pid at "constant speed"
 int Increment = 1;
 int Reduction = 1; //Increment only once every Reduction Cycles
 int ReductionCounter = 0;
-//Specify the links and initial tuning parameters
-double Kp=5, Ki=50, Kd=0.1;
-PID myPID_left(&Input_left, &Output_left, &Setpoint_left, Kp, Ki, Kd, P_ON_E, DIRECT);  //P_ON_E = proportional on Error P_ON_M = on Measurement
-PID myPID_right(&Input_right, &Output_right, &Setpoint_right, Kp, Ki, Kd, P_ON_E, DIRECT);  //P_ON_E = proportional on Error P_ON_M = on Measurement
 
 //The registers are defined in esp8266_peri.h for the esp8266 in C:\Users\Johan\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\2.7.4\cores\esp8266
 #define timer2_read()       (T2V)
@@ -264,6 +218,33 @@ void setup() {
     ESP.restart();
   });
 
+  server.on("/getLoad", HTTP_GET, [](AsyncWebServerRequest * request) {
+    char str[20];
+    Serial.println("/getLoad");
+    StaticJsonDocument<200> jsonDoc;
+    sprintf(str, "\"%5.2f \"", Kp);
+    jsonDoc["P"] = serialized(str);
+    sprintf(str, "\"%5.2f \"", Ki);
+    jsonDoc["I"] = serialized(str);
+    sprintf(str, "\"%5.2f \"", Kd);
+    jsonDoc["D"] = serialized(str);
+    sprintf(str, "\": % 08d\"", Position_left);
+    jsonDoc["PosL"] = serialized(str);
+    sprintf(str, "\": % 08d\"", Position_right);
+    jsonDoc["PosR"] = serialized(str);
+
+    String jsonData;
+    serializeJson(jsonDoc, jsonData);
+    request->send(200, "text/json", jsonData);
+    Serial.println(jsonData);
+  });
+
+  server.on("/getB", HTTP_GET, [](AsyncWebServerRequest * request) {
+    Serial.println("/getB");
+    int battery = analogRead(A0);
+    request->send(200, "number/plane", String(battery));
+  });
+
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
 
@@ -271,8 +252,6 @@ void setup() {
 
   server.begin();
 
-  
-  
   Serial.println("setup() end.");
 
 
@@ -325,6 +304,7 @@ void setup() {
   for (int Index = 0; Index <10; Index++){
     Positions_left[Index] = Position_left;
   }
+  Setpoint_left = Position_left;
 /*******************
  * Initialize right wheel positions
 ********************/
@@ -333,6 +313,7 @@ void setup() {
   for (int Index = 0; Index <10; Index++){
     Positions_right[Index] = Position_right;
   }
+  Setpoint_right = Position_right;
 
   Wire.begin(SDA1_PN, SCL1_PN); //Default: D2,D1 = GPIO4,GPIO5 Alt: D4,D3;
   //Oled display ssd1306 128x64
@@ -359,7 +340,16 @@ void setup() {
   display.setCursor(0,0);
   display.println("AS5601 Encoder");
 
+  //PID_Init(40.0,0.1,30.0,-1000.0, 1000.0); //ok for stepresponse position.
+  //PID_Init(250.0,0.05,100.0,-1000.0, 1000.0);
+  myPID_left.SetSampleTime(1); //Set sampletime to 1 ms. Should be equal to the sample period of the callback routine.
+  myPID_left.SetOutputLimits(-PWM_RANGE, PWM_RANGE);
+  //turn the PID on
+  myPID_left.SetMode(AUTOMATIC);
+
   prevtime = asm_ccount(); //Initialise time
+
+
 
 }
 
@@ -370,10 +360,8 @@ void setup() {
 // the loop function runs over and over again forever
 void loop() {
   //btime = asm_ccount();
-  Setpoint_left = 0; //reset setpoint
   delay(10); // Wait xx ms
-  distance = speedRobot;
-  offsetrad = offset * PI / 180;
+  offsetrad = 0;
 //First Display  
   Wire.begin(SDA1_PN, SCL1_PN); //Default: D2,D1 = GPIO4,GPIO5 Alt: D4,D3;
   Wire.getpins(&gotSDA,&gotSCL); 
@@ -423,29 +411,9 @@ void loop() {
   display.clearDisplay();
   display.setCursor(0,0);
   display.printf("Right s=% 012ld\r\nv= % 06.3f\r\n", Position_right, Speed_right);
-  //display.printf("pwm: % 04d",pwm);
-  display.println(pwm);
-/*
-  //Displaying takes about 30 ms
-  display.setTextSize(1);
-  //display.setTextSize(2);
-  display.setCursor(0,16);
-  display.printf("Rev: % 07d",Revolutions);
-  display.setCursor(0,24);
-  display.printf("Pos: % 07d",Position);
-  display.setCursor(0,32);
-  display.printf("Setp:% 07d",(long)Setpoint);
-  display.setCursor(0,48);
-  display.setTextSize(1);
-  display.printf("usec: % 07d",duration);
-    display.drawCircle(63,16+100,100,WHITE);
-//  display.setCursor(0,56);
-//  display.printf("pid: % 07.2f",Output);
-
-  display.setCursor(0,56);
   display.printf("pwm: % 04d",pwm);
-*/
-///*
+  display.println(pwm);
+
   display.fillCircle(63+x,40,12,WHITE);
   display.fillCircle(63+x,40,3,BLACK);
   display.drawCircle(63,16+100,100,WHITE);
@@ -454,19 +422,7 @@ void loop() {
 
   display.display(); //Refresh display at the end of the loop. this takes about 30 ms.
 
-//  display.dimi(Position);
-  
   thistime = asm_ccount(); //get time
-
-  //pwm = abs(Position/4096*RANGE);
-
-
-
-
-
-
-
-
 
   //etime = asm_ccount();
   duration = etime - btime;
@@ -474,10 +430,12 @@ void loop() {
   duration /=80; //Each tick is 1/80 000 000 s = 12.5 ns /80 to get it in µs
   Serial.print("duration:");
   Serial.print(duration);
-  Serial.print(",Setpoint:");
+  Serial.print(",SetpointL:");
   Serial.print(Setpoint_left);
-  Serial.print(",PWM:");
-  Serial.println(pwm);  
+  Serial.print(",PositionL:");
+  Serial.print(Position_left);
+  Serial.print(",OutputL:");
+  Serial.println(Output_left);  
 /*  
   Serial.print("  Timer 1: ");
   Serial.print(timer1_read());
